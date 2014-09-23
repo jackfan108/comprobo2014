@@ -6,18 +6,19 @@ from sensor_msgs.msg import *
 from geometry_msgs.msg import *
 from math import *
 
-span = 40
+span = 50
 LeftScan = 0
 RightScan = 0
 FrontScan = 0
+
 
 def callback(data):
     global LeftScan, RightScan, FrontScan, count
     LeftScan = 0
     RightScan = 0
     FrontScan = 0
-    countLeft = 0
-    countRight = 0
+    countLeft = 1
+    countRight = 1
     countFront = 0
     for i in data.ranges[0:span]:
         if i != 0:
@@ -36,35 +37,45 @@ def callback(data):
 
 
 def teleop(pub,lin,ang):
-    print'beforepub'
     pub.publish(Twist(linear = Vector3(x=lin),angular = Vector3(z=ang)))
-    print'afterpub'
 
 
 def main():
     rospy.init_node('listener', anonymous=True)
     rospy.Subscriber("scan", LaserScan, callback)
     pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
-    r = rospy.Rate(10) # 10hz
+    r = rospy.Rate(5) # 10hz
     while not rospy.is_shutdown():
         if FrontScan <= 0.2:
             teleop(pub,-0.5,0.2)
-        elif LeftScan >= 0.2:
-            if LeftScan >= RightScan:
+            print 'backup xD'
+            r.sleep()
+        elif LeftScan >= 0.2 and LeftScan <= 0.8:
+            if RightScan == 0 or LeftScan <= LeftScan:
+                teleop(pub,0.2,-0.8)
+                print 'spinning'
+                r.sleep()
+            else:
                 teleop(pub,0.2,0.8)
+                print 'spinning'
+                r.sleep()
+        elif RightScan >= 0.2 and RightScan <= 0.8:
+            if LeftScan == 0 or RightScan <= LeftScan:
+                teleop(pub,0.2,0.8)
+                print 'spinning'
+                r.sleep()
             else:
                 teleop(pub,0.2,-0.8)
-        elif RightScan >= 0.2:
-            if RightScan >= LeftScan:
-                teleop(pub,0.2,-0.8)
-            else:
-                teleop(pub,0.2,0.8)
+                print 'spinning'
+                r.sleep()
         else:
-            teleop(pub,0.8,0)
+            teleop(pub,1,0)
+            print 'forward '
+            r.sleep()
 
-
-        print 'Front Left Average is ' + str(LeftScan)
-        print 'Front Right Average is ' + str(RightScan)
+        #print 'Front Average is ' + str(FrontScan)
+        #print 'Left Average is ' + str(LeftScan)
+        #print 'Right Average is ' + str(RightScan)
   
 if __name__ == '__main__':
     try:
